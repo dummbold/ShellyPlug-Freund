@@ -180,22 +180,43 @@ HTTPServer.registerEndpoint("site", function(req, res) {
     "}" +
 
     "function updateBlocks(data){" +
-      "var old=block.value;" +
-      "blocks=data.blocks||[];" +
-      "block.innerHTML='';" +
+      "var newBlocks=data.blocks||[];" +
+      "var changed=newBlocks.length!==blocks.length;" +
 
-      "for(var i=0;i<blocks.length;i++){" +
-        "var option=document.createElement('option');" +
-        "option.value=blocks[i].name;" +
-        "option.textContent=blocks[i].name;" +
-        "block.appendChild(option);" +
+      "if(!changed){" +
+        "for(var i=0;i<newBlocks.length;i++){" +
+          "if(newBlocks[i].name!==blocks[i].name){" +
+            "changed=true;" +
+            "break;" +
+          "}" +
+        "}" +
       "}" +
 
-      "block.disabled=blocks.length===0;" +
+      "blocks=newBlocks;" +
+
+      "if(changed){" +
+        "var old=block.value;" +
+        "block.innerHTML='';" +
+
+        "for(var i=0;i<blocks.length;i++){" +
+          "var option=document.createElement('option');" +
+          "option.value=blocks[i].name;" +
+          "option.textContent=blocks[i].name;" +
+          "block.appendChild(option);" +
+        "}" +
+
+        "block.disabled=blocks.length===0;" +
+
+        "if(blocks.length){" +
+          "block.value=old;" +
+
+          "if(block.selectedIndex<0){" +
+            "block.selectedIndex=0;" +
+          "}" +
+        "}" +
+      "}" +
 
       "if(blocks.length){" +
-        "block.value=old;" +
-        "if(block.selectedIndex<0)block.selectedIndex=0;" +
         "updateValue();" +
       "}else{" +
         "value.textContent='Keine Sensorblöcke erkannt';" +
