@@ -1,20 +1,11 @@
 // Shelly Plus Plug S
-// HTTP-JSON-Parser mit schlankem WebUI
-//
-// Aufruf:
-// http://SHELLY-IP/script/1/site
+// HTTP-JSON-Parser mit WebUI
+// Aufruf: http://SHELLY-IP/script/1/site
+
 
 // ============================================================
-// Kapitel 1: Hilfsfunktionen
+// Kapitel 1: HTML-Hilfsfunktionen
 // ============================================================
-
-function esc(s) {
-  s = "" + (s || "");
-  return s.split("&").join("&amp;")
-    .split("<").join("&lt;")
-    .split(">").join("&gt;")
-    .split('"').join("&quot;");
-}
 
 function page(content) {
   return "<!doctype html><meta charset=utf-8>" +
@@ -22,67 +13,72 @@ function page(content) {
     "<title>Shelly Sensor</title>" +
     "<style>" +
     "body{font:16px sans-serif;max-width:600px;margin:20px}" +
-    "input,select,button{font:16px;padding:6px;margin:3px 0;width:100%}" +
-    "#value{font-size:24px;font-weight:bold;margin-top:12px}" +
-    "#status{color:#666;margin-top:8px}" +
+    "input,select{font:16px;padding:7px;margin:4px 0;width:100%}" +
+    "#value{font-size:26px;font-weight:bold;margin-top:14px}" +
+    "#info{color:#666;margin-top:8px}" +
     "</style>" +
     content;
 }
 
-function jsonResponse(res, code, object) {
+function jsonResponse(res, code, data) {
   res.code = code;
   res.headers = [["Content-Type", "application/json"]];
-  res.body = JSON.stringify(object);
+  res.body = JSON.stringify(data);
   res.send();
 }
 
+
 // ============================================================
-// Kapitel 2: JSON-Parser
+// Kapitel 2: Parser für Sensorblöcke
 // ============================================================
 
-function parseValues(value, path, fields) {
-  let type = typeof value;
+function parseBlocks(json) {
+  let blocks = [];
 
-  if (value === null ||
-      type === "number" ||
-      type === "string" ||
-      type === "boolean") {
-    fields.push({
-      path: path,
-      value: value
-    });
-    return;
-  }
+  for (let key in json) {
+    if (!json.hasOwnProperty(key)) {
+      continue;
+    }
 
-  if (type === "object") {
-    if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
-        parseValues(value[i], path + "[" + i + "]", fields);
-      }
-    } else {
-      for (let key in value) {
-        if (value.hasOwnProperty(key)) {
-          let nextPath = path ? path + "." + key : key;
-          parseValues(value[key], nextPath, fields);
-        }
+    let item = json[key];
+
+    // Block mit value/unit/timestamp
+    if (item !== null && typeof item === "object") {
+      if (item.hasOwnProperty("value")) {
+        blocks.push({
+          name: key,
+          value: item.value,
+          unit: item.hasOwnProperty("unit") ? item.unit : "",
+          timestamp: item.hasOwnProperty("timestamp")
+            ? item.timestamp
+            : ""
+        });
       }
     }
+
+    // Direkter Einzelwert, z. B. {"W": 123}
+    else {
+      blocks.push({
+        name: key,
+        value: item,
+        unit: "",
+        timestamp: ""
+      });
+    }
   }
+
+  return blocks;
 }
 
+
 // ============================================================
-// Kapitel 3: Sensor abfragen und geparste Werte liefern
+// Kapitel 3: HTTP-Sensorabfrage
 // ============================================================
 
-HTTPServer.registerEndpoint("fetch", function (req, res) {
-  if (req.method !== "POST") {
-    jsonResponse(res, 405, {error: "POST erforderlich"});
-    return;
-  }
-
+HTTPServer.registerEndpoint("fetch", function(req, res) {
   let url = req.body || "";
 
-  // Unterstützt Formularübertragung: url=http://...
+  // Unterstützung für Formularübertragung: url=http://...
   if (url.indexOf("url=") === 0) {
     url = url.slice(4);
   }
@@ -98,7 +94,9 @@ HTTPServer.registerEndpoint("fetch", function (req, res) {
 
   if (url.indexOf("http://") !== 0 &&
       url.indexOf("https://") !== 0) {
-    jsonResponse(res, 400, {error: "Ungültige URL"});
+    jsonResponse(res, 400, {
+      error: "Ungültige URL"
+    });
     return;
   }
 
@@ -124,14 +122,19 @@ HTTPServer.registerEndpoint("fetch", function (req, res) {
       return;
     }
 
-    let fields = [];
-    parseValues(json, "", fields);
+    if (json === null || typeof json !== "object") {
+      jsonResponse(res, 502, {
+        error: "JSON enthält kein Objekt"
+      });
+      return;
+    }
 
     jsonResponse(res, 200, {
-      fields: fields
+      blocks: parseBlocks(json)
     });
   });
 });
+
 
 // ============================================================
 // Kapitel 4: WebUI
@@ -146,52 +149,58 @@ HTTPServer.registerEndpoint("site", function(req, res) {
     "<input id=url " +
     "placeholder='http://192.168.1.10/sensor.json'>" +
 
-    "<select id=field disabled>" +
-    "<option>Sensor zuerst abfragen</option>" +
+    "<select id=block disabled>" +
+    "<option>URL eingeben</option>" +
     "</select>" +
 
     "<div id=value>–</div>" +
-    "<div id=status></div>" +
+    "<div id=info></div>" +
 
     "<script>" +
 
     "var url=document.getElementById('url');" +
-    "var field=document.getElementById('field');" +
+    "var block=document.getElementById('block');" +
     "var value=document.getElementById('value');" +
-    "var status=document.getElementById('status');" +
-    "var fields=[];" +
+    "var info=document.getElementById('info');" +
+    "var blocks=[];" +
 
-    "function showFields(data){" +
-      "var old=field.value;" +
-      "fields=data.fields||[];" +
-      "field.innerHTML='';" +
+    "function updateValue(){" +
+      "for(var i=0;i<blocks.length;i++){" +
+        "if(blocks[i].name===block.value){" +
+          "value.textContent=String(blocks[i].value)+" +
+            "(blocks[i].unit?' '+blocks[i].unit:'');" +
 
-      "for(var i=0;i<fields.length;i++){" +
-        "var o=document.createElement('option');" +
-        "o.value=fields[i].path;" +
-        "o.textContent=fields[i].path;" +
-        "field.appendChild(o);" +
-      "}" +
-
-      "field.disabled=fields.length===0;" +
-
-      "if(fields.length){" +
-        "field.value=old;" +
-        "if(field.selectedIndex<0)field.selectedIndex=0;" +
-        "showValue();" +
-      "}else{" +
-        "value.textContent='Keine Werte erkannt';" +
-      "}" +
-    "}" +
-
-    "function showValue(){" +
-      "for(var i=0;i<fields.length;i++){" +
-        "if(fields[i].path===field.value){" +
-          "value.textContent=String(fields[i].value);" +
+          "info.textContent=blocks[i].timestamp||'';" +
           "return;" +
         "}" +
       "}" +
+
       "value.textContent='–';" +
+      "info.textContent='';" +
+    "}" +
+
+    "function updateBlocks(data){" +
+      "var old=block.value;" +
+      "blocks=data.blocks||[];" +
+      "block.innerHTML='';" +
+
+      "for(var i=0;i<blocks.length;i++){" +
+        "var option=document.createElement('option');" +
+        "option.value=blocks[i].name;" +
+        "option.textContent=blocks[i].name;" +
+        "block.appendChild(option);" +
+      "}" +
+
+      "block.disabled=blocks.length===0;" +
+
+      "if(blocks.length){" +
+        "block.value=old;" +
+        "if(block.selectedIndex<0)block.selectedIndex=0;" +
+        "updateValue();" +
+      "}else{" +
+        "value.textContent='Keine Sensorblöcke erkannt';" +
+        "info.textContent='';" +
+      "}" +
     "}" +
 
     "function readSensor(){" +
@@ -200,21 +209,21 @@ HTTPServer.registerEndpoint("site", function(req, res) {
       "fetch('fetch',{" +
         "method:'POST'," +
         "body:url.value" +
-      "}).then(function(r){return r.json();})" +
+      "})" +
+      ".then(function(r){return r.json();})" +
       ".then(function(data){" +
         "if(data.error){" +
-          "status.textContent=data.error;" +
+          "info.textContent=data.error;" +
           "return;" +
         "}" +
-        "status.textContent='aktualisiert: '+new Date().toLocaleTimeString();" +
-        "showFields(data);" +
+        "updateBlocks(data);" +
       "})" +
       ".catch(function(){" +
-        "status.textContent='Abfrage fehlgeschlagen';" +
+        "info.textContent='Abfrage fehlgeschlagen';" +
       "});" +
     "}" +
 
-    "field.onchange=showValue;" +
+    "block.onchange=updateValue;" +
     "url.onchange=readSensor;" +
     "setInterval(readSensor,5000);" +
 
