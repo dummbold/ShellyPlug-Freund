@@ -1,0 +1,24 @@
+Zusammenfassung der bisherigen Erkenntnisse
+Das GitHub-Repository dummbold/ShellyPlug-Freund muss öffentlich sein, weil der Shelly die Dateien per HTTP/Raw-URL ohne Authentifizierung abruft. Bei einem privaten Repository liefert GitHub 404 Not Found.
+Der Installer liegt in Slot 1 und lädt anhand einer öffentlichen manifest.json die benötigten Dateien aus GitHub in die vorgesehenen Shelly-Slots.
+Das Setzen von Autostart für Slot 2 funktioniert.
+Ein Script kann sich offenbar nicht zuverlässig selbst beenden. Deshalb muss der Installer als letzte Aktion Slot 2 starten.
+Slot 2 soll unmittelbar beim Start Slot 1 mit:
+js
+
+Kopieren
+  Script.SetConfig({ id: 1, config: { enable: false } });
+  Script.Stop({ id: 1 });
+  
+deaktivieren und stoppen. Erst danach startet Slot 2 seine eigentliche Anwendung.
+
+Die JSON-Auswertung muss universell und iterativ, nicht rekursiv, erfolgen. Dadurch werden verschachtelte Wetter- und Shelly-JSONs verarbeitet, ohne erneut einen Stack-Overflow zu riskieren.
+Für die spätere Szenenlogik wird ein einzelner JSON-Pfad beziehungsweise Messwert ausgewählt. URL, Pfad, Threshold, Animationen und Schaltzustände sollen dauerhaft im KVS gespeichert werden.
+Die JSON-Erkennung und Einrichtung sollte in einem temporären Setup-Script erfolgen; der dauerhafte Controller bleibt schlank und führt nur die konfigurierte Szene aus.
+Ein zweiter HTTP-Endpunkt und große zwischengespeicherte JSON-Strukturen verursachten Speicherprobleme. Die WebUI und Parserlogik müssen deshalb möglichst sparsam bleiben.
+Aktueller Stand: Die grundsätzliche Architektur und die entscheidenden Fehlerursachen sind geklärt. Die weitere Umsetzung wird zunächst nicht verfolgt.
+
+
+
+
+
