@@ -1,0 +1,200 @@
+Projektstand Shelly-Anwendung
+Grundidee
+Aus dem bisherigen LED-Script soll eine lokale Shelly-Anwendung werden für:
+
+leistungsabhängige LED-Anzeige
+Schalten des Outputs nach Messwerten
+externe JSON-Sensoren
+Solarüberschuss und Solarladen
+Abhängigkeiten zu anderen Geräten
+optionale Nachtschaltung
+Es läuft immer genau eine Szene. Für eine andere Anwendung wird die Shelly neu eingerichtet.
+
+Slot-Aufteilung
+Slot 1 - Installer/Updater
+Installation und Updates
+lädt aktuelle Scripts von GitHub
+startet beziehungsweise aktiviert die Laufzeit-Scripts
+wird danach deaktiviert und gestoppt
+Slot 2 - Laufzeit-Controller
+Läuft dauerhaft:
+
+führt die aktive Szene aus
+liest interne oder externe Messwerte
+wertet Grenzwerte und Zustände aus
+schaltet den Output
+lädt LED0 bis LED9 aus dem KVS
+dekodiert und führt die vollständigen LED-Rohdaten aus
+arbeitet nach Neustart selbstständig
+Slot 2 darf nicht von den Editoren abhängig sein.
+
+Slot 3 - Dauerhafte Anzeige-/Portal-WebUI
+Läuft dauerhaft:
+
+kreisförmige Darstellung des LED-Rings
+wichtigste Messwerte
+aktiver Szenentyp
+aktueller Zustand
+Output-Zustand
+Status- und Fehlermeldungen
+Buttons beziehungsweise Bereiche für:
+LED-Einstellungen
+Szenen-Einstellungen
+Slot 4 - LED-Editor
+Nur bei Bedarf gestartet:
+
+Einrichtung von LED0 bis LED9
+Auswahl:
+konstantes Licht
+fertige Animation
+eigene Animation
+erzeugt immer vollständige Rohdaten
+speichert jeden LED-Zustand komplett im KVS
+kann danach beendet werden
+Slot 5 - Szenen-Editor
+Nur bei Bedarf gestartet:
+
+Auswahl und Einrichtung des Szenentyps
+Sensorquelle und JSON-Pfad
+Grenzwerte
+Schaltverhalten
+LED-Zuordnungen
+Nachtschaltung
+Speichern und Laden der aktiven Konfiguration
+Shelly erlaubt maximal drei gleichzeitig laufende Scripts.[6]
+
+Normalbetrieb:
+
+text
+
+Kopieren
+Slot 2 + Slot 3
+LED-Einrichtung:
+
+text
+
+Kopieren
+Slot 2 + Slot 3 + Slot 4
+Szenen-Einrichtung:
+
+text
+
+Kopieren
+Slot 2 + Slot 3 + Slot 5
+KVS-Konzept
+LED-Konfiguration
+Die Werte LED0 bis LED9 enthalten immer den kompletten Ablauf als Rohdaten:
+
+keine Verweise
+keine Variablennamen
+keine Abhängigkeit von Vorlagen
+konstantes Rot ist genauso ein kompletter Ablauf wie eine Regenbogenanimation
+Die Leistungsstufen wählen lediglich fest aus:
+
+text
+
+Kopieren
+Stufe 1  → LED0
+Stufe 2  → LED1
+...
+Stufe 10 → LED9
+Die Regenbogenanimation aus dem alten Script ist als normales JSON mit etwa 523 Zeichen zu groß für einen einzelnen KVS-Wert. Eine kompakte Codierung ist erforderlich.
+
+Bisher geplante Szenen
+Szene 1 - Leistungsstufen
+Quelle:
+
+text
+
+Kopieren
+interner Leistungswert der Shelly
+zehn Watt-Grenzen
+zehn feste Zuordnungen zu LED0 bis LED9
+LED-Zustände liegen vollständig im KVS
+Output-Schaltung kann Bestandteil der Szene sein
+Szene 2 - Externer Solar-/Sensorwert
+Quelle:
+
+text
+
+Kopieren
+URL → JSON → ausgewählter Wert
+Vier Modi:
+
+ Nur anzeigen
+
+Netzbezug und Solarüberschuss unterscheiden
+unterschiedliche LED-Anzeigen
+ Einfaches Laden
+
+Solarüberschuss → Output ON
+Netzbezug → Output OFF
+ Intelligentes Laden
+
+Solarstrom erzeugt Zeitguthaben
+Netzstrom verbraucht Guthaben
+einstellbarer maximaler Netzstromanteil pro Stunde
+ Zeitgesteuertes Laden
+
+Solarüberschuss plus Einschaltgrenze
+Output ON für eine definierte Zeit
+danach OFF
+ Gemeinsame Eingaben:
+
+URL
+JSON-Pfad beziehungsweise ausgewählter Wert
+optionale Einschaltgrenze
+Je nach ausgewähltem Modus werden zusätzliche Eingabefelder eingeblendet.
+
+Szene 3 - Abhängigkeit von externem Gerät
+Quelle:
+
+text
+
+Kopieren
+URL → JSON → ausgewählter Wert
+Auswertung:
+
+text
+
+Kopieren
+true / false
+Aktionen:
+
+Output ON
+Output OFF
+Output Toggle
+Zusätzlich:
+
+unterschiedliche LED-Zustände für ON und OFF
+Nachtschaltung
+Die Nachtschaltung ist keine eigene Szene, sondern eine globale optionale Zusatzfunktion für die aktive Szene.
+
+Eigene Kachel:
+
+Beginn
+Ende
+gewünschtes Verhalten
+optionale alternative LED-Animation
+optionale Helligkeit
+Globaler Schalter:
+
+text
+
+Kopieren
+[ ] Nachtschaltung aktiv
+Es gibt kein Aktivierungsfeld pro Szene, weil immer nur eine Szene aktiv ist.
+
+UI-Strategie
+Kein Versuch, das Shelly-UI direkt mit eigenen HTML-Seiten zu erweitern.
+
+Stattdessen:
+
+eigene schlanke WebUI
+optisch am Shelly-UI orientiert
+kein Framework
+kein externes CSS
+Slot 3 dauerhaft als Portal/Anzeige
+Slot 4 und 5 als temporäre Editoren
+Virtual Components sind für Gen3 und Gen2-Pro-Geräte interessant, aber derzeit Preview und auf zehn Komponenten begrenzt.[38] Sie ersetzen unsere Editoren nicht, können später aber eventuell als zusätzlicher Einstiegspunkt dienen.
+
