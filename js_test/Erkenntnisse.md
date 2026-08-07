@@ -1,6 +1,11 @@
-Verbleibende relevante Techniken aus Spotelly
+Verbleibende relevante Techniken aus 
+
+[GitHub - towiat/spotelly: Price-based Operation of Shelly Devices · GitHub](https://github.com/towiat/spotelly)
+
+
+
 1. HTML beim Build komprimieren und in JavaScript einbetten
-text
+   text
 
 Kopieren
 HTML-Seiten
@@ -11,7 +16,7 @@ HTML-Seiten
 Script 3 liefert die Ansichtsseite aus. Die einzelnen Bereiche beziehungsweise HTML-Seiten werden dort über Buttons geöffnet oder ein-/ausgeblendet.
 
 2. JSON-Konfiguration im KVS
-Konfigurationsdaten werden als JSON strukturiert und dauerhaft im KVS gespeichert.
+   Konfigurationsdaten werden als JSON strukturiert und dauerhaft im KVS gespeichert.
 
 Beispiel:
 
@@ -64,7 +69,7 @@ delete res.body;
 Das ist bei größeren JSON-Antworten für die RAM-Nutzung des Shelly relevant.
 
 5. Fehlerprüfung bei externen HTTP-Abfragen
-Spotelly unterscheidet zwischen:
+   Spotelly unterscheidet zwischen:
 
 text
 
